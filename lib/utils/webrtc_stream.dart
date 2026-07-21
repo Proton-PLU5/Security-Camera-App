@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:camera_application/utils/api/network.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:http/http.dart' as http;
 
@@ -10,6 +11,11 @@ class WebRTCStream {
   void Function(MediaStream stream)? onRemoteStream;
   bool _disposed = false;
   int _retryDelaySeconds = 5;
+
+  NetworkUtils networkUtils;
+  String cameraId;
+
+  WebRTCStream({required this.networkUtils, required this.cameraId});
 
   Future<void> connect(String serverUrl) async {
     _disposed = false;
@@ -112,19 +118,42 @@ class WebRTCStream {
       throw Exception('Local description is null after ICE gathering');
     }
 
+    final response = await _postOffer(serverUrl, localDesc,);
+
+    final answerData = jsonDecode(response.body);
+    final answer =
+        RTCSessionDescription(answerData['sdp'], answerData['type']);
+    await peerConnection!.setRemoteDescription(answer);
+  }
+
+  Future<http.Response> _postOffer(
+    String serverUrl,
+    RTCSessionDescription localDesc, {
+    bool isRetry = false,
+  }) async {
+    final token = await networkUtils.requestToken(cameraId);
+
     final response = await http.post(
       Uri.parse('$serverUrl/offer'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
       body: jsonEncode({
         'sdp': localDesc.sdp,
         'type': localDesc.type,
       }),
     );
 
-    final answerData = jsonDecode(response.body);
-    final answer =
-        RTCSessionDescription(answerData['sdp'], answerData['type']);
-    await peerConnection!.setRemoteDescription(answer);
+    if (response.statusCode == 401) {
+      if (isRetry) {
+        throw Exception('Reauthentication failed. Please check your credentials.');
+      }
+      await networkUtils.requestToken(cameraId);
+      return _postOffer(serverUrl, localDesc, isRetry: true);
+    }
+
+    return response;
   }
 
   Future<void> _cleanupPeerConnection() async {

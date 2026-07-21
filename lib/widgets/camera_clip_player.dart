@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/models/camera_clip.dart';
 import 'package:camera_application/models/detection.dart';
+import 'package:camera_application/utils/api/network.dart';
 
 class CameraClipPlayer extends StatefulWidget {
   final Camera camera;
@@ -29,6 +30,7 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   bool _isInitialized = false;
   bool _hasError = false;
   String _errorMessage = '';
+  NetworkUtils? _networkUtils;
 
   // Timing metadata state
   List<TimedDetection> _allDetections = [];
@@ -38,6 +40,7 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   void initState() {
     super.initState();
     _initializePlayerAndMetadata();
+    _networkUtils = NetworkUtils('http://${widget.camera.ipAddress}:${widget.camera.port}');
   }
 
   Future<void> _initializePlayerAndMetadata() async {
@@ -66,9 +69,8 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   Future<void> _fetchDetections() async {
     // 1. Fetch metadata from your new python endpoint
 
-    final url = Uri.parse('http://${widget.camera.ipAddress}:${widget.camera.port}/clip/${widget.clip.id}/detections');
-    print('Fetching detections from: $url');
-    final response = await http.get(url).timeout(const Duration(seconds: 10));
+    final endpoint = '/clip/${widget.clip.id}/detections';
+    final http.Response response = await _networkUtils!.get(endpoint, widget.camera.uuid);
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);

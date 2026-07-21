@@ -2,9 +2,10 @@ import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/models/detection.dart';
 import 'package:camera_application/utils/detection_overlay_painter.dart';
 import 'package:camera_application/utils/detection_stream.dart';
-import 'package:camera_application/utils/preview_stream.dart';
+import 'package:camera_application/utils/webrtc_stream.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:camera_application/utils/api/network.dart';
 
 class CameraPreview extends StatefulWidget {
   final Camera camera;
@@ -20,11 +21,17 @@ class _CameraPreviewState extends State<CameraPreview> {
   late final DetectionStream _detectionStream;
   bool _hasStream = false;
   List<Detection> _detections = [];
+  NetworkUtils? _networkUtils;
 
   @override
   void initState() {
     super.initState();
-    _webRTCStream = WebRTCStream()
+    _networkUtils = NetworkUtils('http://${widget.camera.ipAddress}:${widget.camera.port}');
+
+    _webRTCStream = WebRTCStream(
+      networkUtils: _networkUtils!,
+      cameraId: widget.camera.uuid,
+    )
       ..onRemoteStream = (stream) {
         if (mounted) setState(() => _hasStream = true);
       };
