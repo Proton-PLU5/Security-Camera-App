@@ -4,31 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'pages/camera_browse.dart';
 import 'pages/camera_page.dart';
 
-void home() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  Hive.registerAdapter(CameraAdapter());
-  await Hive.openBox<Camera>('favoriteCameras');
-  await Hive.openBox<Camera>('cameras');
-
-  runApp(const App());
-}
-
-class App extends StatelessWidget {
-  const App({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Security Camera'),
-    );
-  }
-}
-
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
   final String title;

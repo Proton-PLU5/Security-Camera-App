@@ -137,7 +137,7 @@ class WebRTCStream {
       Uri.parse('$serverUrl/offer'),
       headers: {
         'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
         'sdp': localDesc.sdp,
