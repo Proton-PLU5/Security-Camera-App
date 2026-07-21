@@ -1,12 +1,12 @@
+import 'package:camera_application/data/TText.dart';
 import 'package:flutter/material.dart';
-import 'models/camera.dart';
+import '../models/camera.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'pages/camera_browse.dart';
-import 'pages/camera_page.dart';
+import 'camera_browse.dart';
+import 'camera_page.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: Text('Home', style: TextStyle(
+              child: Text(TText.homeTabName, style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -97,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                   // Handle favorites action
                 },
-                child: Text('Favorites', style: TextStyle(
+                child: Text(TText.homeFavouriteCamerasTabName, style: TextStyle(
                   color: Colors.blue,
                   fontSize: 16,
                   fontWeight: selectedCameraTab == 0 ? FontWeight.bold : FontWeight.normal,
@@ -110,7 +110,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                   // Handle all cameras action
                 },
-                child: Text('All Cameras', style: TextStyle(
+                child: Text(TText.homeAllCamerasTabName, style: TextStyle(
                   color: Colors.blue,
                   fontSize: 16,
                   fontWeight: selectedCameraTab == 1 ? FontWeight.bold : FontWeight.normal,
@@ -124,6 +124,13 @@ class _MyHomePageState extends State<MyHomePage> {
             color: Colors.grey[400],
             margin: const EdgeInsets.only(bottom: 16),
           ),
+
+          itemCount <= 0
+            ? Text(TText.homeNoCamerasMessage, style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ))
+            : const SizedBox.shrink(),
 
           Expanded(
             child: GridView.builder(
@@ -217,7 +224,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   );
                 },
               ),
-            )
+            ),
         ],
       ),      
       floatingActionButton: FloatingActionButton(
@@ -235,7 +242,7 @@ class _MyHomePageState extends State<MyHomePage> {
             }
           });
         },
-        tooltip: 'Add Camera',
+        tooltip: TText.homeActionButtonTooltip,
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -243,15 +250,15 @@ class _MyHomePageState extends State<MyHomePage> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Home',
+            label: TText.homeTabName,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.camera_alt),
-            label: 'Cameras',
+            label: TText.cameraTabName,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
-            label: 'Settings',
+            label: TText.settingsTabName,
           ),
         ],
       )

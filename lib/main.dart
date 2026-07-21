@@ -1,4 +1,5 @@
-import 'package:camera_application/home.dart';
+import 'package:camera_application/data/TText.dart';
+import 'package:camera_application/pages/home.dart';
 import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/pages/login.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Security Camera',
+      title: TText.appName,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -47,7 +48,7 @@ class App extends StatelessWidget {
             );
           } else {
             final isLoggedIn = snapshot.data ?? false;
-            return isLoggedIn ? MyHomePage(title: 'Security Camera') : LoginScreen();
+            return isLoggedIn ? MyHomePage() : LoginScreen();
           }
         },
       )
