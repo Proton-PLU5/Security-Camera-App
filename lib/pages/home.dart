@@ -1,4 +1,5 @@
 import 'package:camera_application/data/TText.dart';
+import 'package:camera_application/pages/settings.dart';
 import 'package:flutter/material.dart';
 import '../models/camera.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -261,6 +262,20 @@ class _MyHomePageState extends State<MyHomePage> {
             label: TText.settingsTabName,
           ),
         ],
+        onTap: (index) {
+          // Handle bottom navigation tap
+          if (index == 2) {
+            // Navigate to camera page
+            Navigator.push(context, 
+              MaterialPageRoute(
+                builder: (context) => const SettingsPage(),
+              )
+            );
+          } else if (index == 1) {
+            // Navigate to camera page
+            // Implement camera page navigation
+          }
+        },
       )
     );
   }

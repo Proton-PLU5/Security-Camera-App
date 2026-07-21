@@ -19,4 +19,9 @@ class TText {
   static const String homeFavouriteCamerasTabName = 'Favorite Cameras';
   static const String homeAllCamerasTabName = 'All Cameras';
   static const String homeNoCamerasMessage = 'No cameras found. ';
+
+  /// Settings Screen
+  static const String settingsTitle = 'Settings';
+  static const String settingsUserSectionTitle = 'User';
+  static const String settingsSectionTitle = 'Settings';
 }
