@@ -30,19 +30,19 @@ class NetworkUtils {
   }
 
   Future<String> doRequestToken(String cameraId) async {
-    final url = Uri.parse('$baseUrl/authenticate');
-
-    final username = await storage.read(key: 'username');
-    final password = await storage.read(key: 'password');
-
-    if (username == null || password == null) {
-      throw Exception('Username or password not found in secure storage.');
+    final url = Uri.parse('$baseUrl/pair/token');
+    final pairingToken = await storage.read(key: cameraId) ?? '';
+    
+    if (pairingToken.isEmpty) {
+      throw Exception('Pairing token is empty. Please provide a valid pairing token.');
     }
 
     final response = await http.post(
       url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $pairingToken',
+      },
     ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 401) {
@@ -57,6 +57,25 @@ class NetworkUtils {
       return token;
     } else {
       throw Exception('Token not found in the response.');
+    }
+  }
+
+  Future<String> requestPairingToken(String cameraId) async {
+    String url = '$baseUrl/pair';
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      await storage.write(key: cameraId, value: responseData['token']);
+      return responseData['token'];
+    } else {
+      throw Exception('Failed to request pairing token.');
     }
   }
 
@@ -81,4 +100,7 @@ class NetworkUtils {
     
     return response;
   }
+
+
+
 }

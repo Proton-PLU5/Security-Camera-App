@@ -1,5 +1,6 @@
 import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/models/discovered_camera.dart';
+import 'package:camera_application/utils/api/network.dart';
 import 'package:flutter/material.dart';
 
 class CameraAddPage extends StatefulWidget {
@@ -18,6 +19,15 @@ class _CameraAddPageState extends State<CameraAddPage> {
   String cameraName = 'My Camera';
   String cameraLocation = 'Front Door';
   bool congratsPageVisible = true;
+  NetworkUtils? _networkUtils;
+
+  @override
+  void initState() {
+    super.initState();
+    _networkUtils = NetworkUtils(
+      'http://${widget.camera.ip}:${widget.camera.port}'
+    );
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -115,6 +125,9 @@ class _CameraAddPageState extends State<CameraAddPage> {
 
           ElevatedButton(
             onPressed: () {
+
+              // 1. Use the NetworkUtils instance to request a token
+              
               // Handle setup camera action
               Camera camera = Camera(
                 uuid: widget.camera.id,
@@ -122,7 +135,7 @@ class _CameraAddPageState extends State<CameraAddPage> {
                 location: cameraLocation,
                 ipAddress: widget.camera.ip,
                 port: widget.camera.port,
-                version: widget.camera.version,
+                version: widget.camera.version
               );
 
               Navigator.pop(context, camera);

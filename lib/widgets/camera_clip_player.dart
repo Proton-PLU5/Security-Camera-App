@@ -40,7 +40,9 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   void initState() {
     super.initState();
     _initializePlayerAndMetadata();
-    _networkUtils = NetworkUtils('http://${widget.camera.ipAddress}:${widget.camera.port}');
+    _networkUtils = NetworkUtils(
+      'http://${widget.camera.ipAddress}:${widget.camera.port}'
+    );
   }
 
   Future<void> _initializePlayerAndMetadata() async {

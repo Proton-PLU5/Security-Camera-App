@@ -26,7 +26,9 @@ class _CameraPreviewState extends State<CameraPreview> {
   @override
   void initState() {
     super.initState();
-    _networkUtils = NetworkUtils('http://${widget.camera.ipAddress}:${widget.camera.port}');
+    _networkUtils = NetworkUtils(
+      'http://${widget.camera.ipAddress}:${widget.camera.port}'
+    );
 
     _webRTCStream = WebRTCStream(
       networkUtils: _networkUtils!,

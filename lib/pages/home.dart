@@ -41,7 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
       uuid: DateTime.now().millisecondsSinceEpoch.toString(),
       ipAddress: '192.168.0.161',
       port: 8080,
-      version: '1.0.0',
+      version: '1.0.0'
     );
 
     if (selectedCameraTab == 0) {
