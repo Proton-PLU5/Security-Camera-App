@@ -125,12 +125,10 @@ class _CameraAddPageState extends State<CameraAddPage> {
 
           ElevatedButton(
             onPressed: () {
-
-              // 1. Use the NetworkUtils instance to request a token
               
               // Handle setup camera action
               Camera camera = Camera(
-                uuid: widget.camera.id,
+                uuid: widget.camera.uuid,
                 name: cameraName,
                 location: cameraLocation,
                 ipAddress: widget.camera.ip,

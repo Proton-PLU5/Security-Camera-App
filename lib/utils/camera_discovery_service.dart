@@ -63,7 +63,7 @@ class CameraDiscoveryService {
         // Populate with the necessary information (id, ip, port, version, etc.)
 
         yield DiscoveredCamera(
-          id: id ?? key,
+          uuid: id ?? key,
           name: ptr.domainName,
           ip: ip ?? 'Unknown IP',
           port: srv.port,

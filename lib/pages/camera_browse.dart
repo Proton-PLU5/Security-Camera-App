@@ -28,7 +28,7 @@ class _CameraBrowsePageState extends State<CameraBrowsePage> {
 
     // Fake camera data for testing
     DiscoveredCamera fakeCamera1 = DiscoveredCamera(
-      id: 'camera1',
+      uuid: 'camera1',
       name: 'Camera 1',
       ip: '192.168.0.161',
       port: 8080,
