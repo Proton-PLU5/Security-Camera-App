@@ -26,11 +26,11 @@ class CameraClipPlayer extends StatefulWidget {
 
 class _CameraClipPlayerState extends State<CameraClipPlayer> {
   late VideoPlayerController _controller;
-  
+
   bool _isInitialized = false;
   bool _hasError = false;
   String _errorMessage = '';
-  NetworkUtils? _networkUtils;
+  late final NetworkUtils _networkUtils;
 
   // Timing metadata state
   List<TimedDetection> _allDetections = [];
@@ -39,10 +39,10 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   @override
   void initState() {
     super.initState();
-    _initializePlayerAndMetadata();
     _networkUtils = NetworkUtils(
       'http://${widget.camera.ipAddress}:${widget.camera.port}'
     );
+    _initializePlayerAndMetadata();
   }
 
   Future<void> _initializePlayerAndMetadata() async {
@@ -72,7 +72,7 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
     // 1. Fetch metadata from your new python endpoint
 
     final endpoint = '/clip/${widget.clip.id}/detections';
-    final http.Response response = await _networkUtils!.get(endpoint, widget.camera.uuid);
+    final http.Response response = await _networkUtils.get(endpoint, widget.camera.uuid);
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
@@ -97,13 +97,35 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
     final clipNameCleaned = widget.clip.fileName
         .replaceFirst("clip_", "")
         .replaceFirst(".mp4", "");
-    
-    final urlString = 'http://${widget.camera.ipAddress}:${widget.camera.port}/clip/$clipNameCleaned';
-    
-    _controller = VideoPlayerController.networkUrl(Uri.parse(urlString));
-    await _controller.initialize();
-    
+
+    final uri = Uri.parse('${_networkUtils.baseUrl}/clip/$clipNameCleaned');
+
+    await _initVideoController(uri, isRetry: false);
+
     _controller.addListener(_onVideoTick);
+  }
+
+  /// Builds a fresh VideoPlayerController pointed at [uri] with the
+  /// Authorization header the server requires. Uses the cached session
+  /// token on the first attempt; if that gets rejected, forces a token
+  /// refresh and tries exactly once more.
+  Future<void> _initVideoController(Uri uri, {required bool isRetry}) async {
+    final token = isRetry
+        ? await _networkUtils.requestToken(widget.camera.uuid)
+        : await _networkUtils.getSessionToken(widget.camera.uuid);
+
+    _controller = VideoPlayerController.networkUrl(
+      uri,
+      httpHeaders: {'Authorization': 'Bearer $token'},
+    );
+
+    try {
+      await _controller.initialize();
+    } catch (e) {
+      if (isRetry) rethrow;
+      await _controller.dispose();
+      await _initVideoController(uri, isRetry: true);
+    }
   }
 
   void _onVideoTick() {
