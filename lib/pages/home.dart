@@ -293,7 +293,19 @@ class _MyHomePageState extends State<MyHomePage> {
             );
           } else if (index == 1) {
             // Navigate to camera page
-            // Implement camera page navigation
+            // Selected camera is the first one in the list, or null if no cameras exist
+            Camera? selectedCamera = cameraBox.isNotEmpty ? cameraBox.getAt(0) : null;
+            if (selectedCamera != null) {
+              Navigator.push(context, 
+                MaterialPageRoute(
+                  builder: (context) => CameraPage(camera: selectedCamera),
+                )
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No cameras available. Please add a camera first.')),
+              );
+            }
           }
         },
       )
