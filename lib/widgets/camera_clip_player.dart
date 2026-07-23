@@ -13,11 +13,13 @@ import 'package:camera_application/utils/api/network.dart';
 class CameraClipPlayer extends StatefulWidget {
   final Camera camera;
   final CameraClip clip;
+  final void Function(double currentSeconds)? updateTimeCallback;
 
   const CameraClipPlayer({
     super.key,
     required this.camera,
     required this.clip,
+    required this.updateTimeCallback,
   });
 
   @override
@@ -132,6 +134,9 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
     if (!mounted || !_controller.value.isInitialized) return;
 
     final currentSeconds = _controller.value.position.inMilliseconds / 1000.0;
+
+    // Call the updateTimeCallback if provided
+    widget.updateTimeCallback?.call(currentSeconds);
 
     // Find the latest detection timestamp at or before playhead, and keep
     // all detections sharing that timestamp visible until the next one arrives.

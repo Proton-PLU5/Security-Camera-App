@@ -21,7 +21,7 @@ class CameraPage extends StatefulWidget {
 
 class _CameraPageState extends State<CameraPage> {
   Timer? _timer;
-  String currentTime = DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now());
+  ValueNotifier<String> currentTimeNotifier = ValueNotifier<String>(DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now()));
   bool get viewingPreview => _selectedClip == null;
   CameraClip? _selectedClip;
 
@@ -32,10 +32,10 @@ class _CameraPageState extends State<CameraPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
         if (_selectedClip == null) {
-          currentTime =
+          currentTimeNotifier.value =
               DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now());
         } else {
-          currentTime =
+          currentTimeNotifier.value =
               DateFormat('EEE, MMM d yyyy HH:mm:ss')
                   .format(_selectedClip!.startedAt);
         }
@@ -148,6 +148,15 @@ class _CameraPageState extends State<CameraPage> {
     );
   }
 
+  void updateTimeCallback(double currentSeconds) {
+    setState(() {
+      final displayTime = _selectedClip!.startedAt
+            .add(Duration(milliseconds: (currentSeconds * 1000).round()));
+      
+      currentTimeNotifier.value = DateFormat('EEE, MMM d yyyy HH:mm:ss').format(displayTime);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -213,6 +222,7 @@ class _CameraPageState extends State<CameraPage> {
                 key: ValueKey(_selectedClip!.id), 
                 camera: widget.camera, 
                 clip: _selectedClip!,
+                updateTimeCallback: updateTimeCallback,
               ),
           
 
@@ -222,10 +232,12 @@ class _CameraPageState extends State<CameraPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  currentTime,
-                  style: const TextStyle(fontSize: 20),
-                )
+                child: ValueListenableBuilder(valueListenable: currentTimeNotifier, builder: (context, value, child) {
+                  return Text(
+                    value,
+                    style: const TextStyle(fontSize: 20),
+                  );
+                })
               ),
               Row(children: [
                 if (_selectedClip != null)
