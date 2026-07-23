@@ -1,5 +1,6 @@
 import 'package:camera_application/data/TText.dart';
 import 'package:camera_application/pages/settings.dart';
+import 'package:camera_application/utils/api/network.dart';
 import 'package:flutter/material.dart';
 import '../models/camera.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -153,6 +154,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
                     child: InkWell(
                       onTap: () async {
+
+                        // Warm the session-token cache for this camera
+                        // before opening its page, so the preview / clip
+                        // list don't have to eat a 401 round-trip on
+                        // first load. Uses the cached token if we still
+                        // have a valid one - only reaches out to the
+                        // camera if we don't.
+                        NetworkUtils networkUtils = NetworkUtils(
+                          'http://${itemAt(index).ipAddress}:${itemAt(index).port}',
+                        );
+
+                        try {
+                          await networkUtils.getSessionToken(itemAt(index).uuid);
+                        } catch (error) {
+                          debugPrint(
+                            'Could not obtain a session token for ${itemAt(index).name}: $error',
+                          );
+                        }
+
                         // Open camera page
                         await Navigator.push(context, 
                           MaterialPageRoute(

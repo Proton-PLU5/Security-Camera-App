@@ -1,191 +1,128 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class NetworkUtils {
   final String baseUrl;
   final FlutterSecureStorage storage = const FlutterSecureStorage();
   static final Map<String, Future<String>> pendingTokenRequests = {};
-
-  // Cache one pinned http.Client per camera so we don't rebuild the
-  // SecurityContext/HttpClient on every request.
-  static final Map<String, http.Client> _pinnedClients = {};
+  static final Map<String, http.Client> _clients = {};
 
   NetworkUtils(this.baseUrl);
 
-  /// Fetches the camera's self-signed certificate over an UNVERIFIED
-  /// connection (trust-on-first-use) and stores it for later pinning.
-  Future<void> getCertificate(String cameraId) async {
-    final bootstrapClient = HttpClient()
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
-        // TODO: verify cert fingerprint against a known-good value from
-        // the pairing flow before trusting it, if possible.
-        return true;
-      };
+  http.Client _clientFor(String cameraId) =>
+      _clients.putIfAbsent(cameraId, () => http.Client());
 
-    try {
-      final request = await bootstrapClient
-          .getUrl(Uri.parse('$baseUrl/pair/cert'))
-          .timeout(const Duration(seconds: 10));
-      final response = await request.close();
-
-      if (response.statusCode == 200) {
-        final bytes = await consolidateHttpClientResponseBytes(response);
-        final pem = utf8.decode(bytes);
-        await storage.write(key: 'certificate_$cameraId', value: pem);
-
-        // Drop any previously cached pinned client for this camera since
-        // the trusted cert has changed.
-        _pinnedClients.remove(cameraId)?.close();
-      } else {
-        throw Exception(
-            'Failed to fetch certificate. Status code: ${response.statusCode}');
-      }
-    } finally {
-      bootstrapClient.close();
-    }
+  Future<void> forgetCamera(String cameraId) async {
+    _clients.remove(cameraId)?.close();
+    await storage.delete(key: 'token_$cameraId');
+    await storage.delete(key: 'pairing_$cameraId');
   }
 
-  /// Reads bytes from an HttpClientResponse without pulling in dart:io's
-  /// higher-level helpers that aren't exposed by default.
-  Future<List<int>> consolidateHttpClientResponseBytes(
-      HttpClientResponse response) async {
-    final bytes = <int>[];
-    await for (final chunk in response) {
-      bytes.addAll(chunk);
+  /// Called once during camera setup, while the camera is in pairing mode.
+  /// Exchanges for a persistent pairing secret and stores it securely.
+  /// This secret never expires (until the user re-pairs/removes the
+  /// camera), and is what we use to mint session tokens later.
+  Future<String> requestPairingToken(String cameraId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pair'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to pair with camera (HTTP ${response.statusCode}). '
+          'Make sure the camera is in pairing mode.');
     }
-    return bytes;
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final secret = data['pairing_secret'] as String?;
+    if (secret == null || secret.isEmpty) {
+      throw Exception('Camera did not return a pairing secret.');
+    }
+
+    await storage.write(key: 'pairing_$cameraId', value: secret);
+    return secret;
   }
 
-  /// Returns a cached pinned client for [cameraId], building one from the
-  /// stored certificate if it doesn't exist yet. Throws if no certificate
-  /// has been fetched/stored for this camera (call [getCertificate] first).
-  Future<http.Client> _clientFor(String cameraId) async {
-    final cached = _pinnedClients[cameraId];
-    if (cached != null) {
+  /// Returns a usable session token. If we already have one cached, it is
+  /// returned immediately with no network round-trip. Only mints a new one
+  /// (via the persistent pairing secret) if we don't have one cached yet.
+  ///
+  /// Use this for the "normal" case. Use [requestToken] directly only when
+  /// you already know the cached token is bad (e.g. after a 401) and need
+  /// to force a refresh.
+  Future<String> getSessionToken(String cameraId) async {
+    final cached = await storage.read(key: 'token_$cameraId');
+    if (cached != null && cached.isNotEmpty) {
       return cached;
     }
-
-    final pem = await storage.read(key: 'certificate_$cameraId');
-    if (pem == null || pem.isEmpty) {
-      throw Exception(
-          'No pinned certificate found for $cameraId. Call getCertificate() first.');
-    }
-
-    final context = SecurityContext(withTrustedRoots: false);
-    context.setTrustedCertificatesBytes(utf8.encode(pem));
-
-    final httpClient = HttpClient(context: context)
-      // Only trust connections that chain to the pinned cert; reject
-      // everything else (including real CA-signed certs from other hosts).
-      ..badCertificateCallback = (cert, host, port) => false;
-
-    final client = IOClient(httpClient);
-    _pinnedClients[cameraId] = client;
-    return client;
+    return requestToken(cameraId);
   }
 
-  /// Call this if a camera is unpaired/removed, to free the cached client
-  /// and drop the stored certificate/token.
-  Future<void> forgetCamera(String cameraId) async {
-    _pinnedClients.remove(cameraId)?.close();
-    await storage.delete(key: 'certificate_$cameraId');
-    await storage.delete(key: 'token_$cameraId');
-    await storage.delete(key: cameraId);
-  }
-
+  /// Forces a fresh session token to be minted from the persistent pairing
+  /// secret and overwrites whatever was cached. Call this when a request
+  /// has just failed with 401, meaning the previous session token expired.
   Future<String> requestToken(String cameraId) async {
-    if (pendingTokenRequests.containsKey(cameraId)) {
-      return pendingTokenRequests[cameraId]!;
-    }
-
-    final Future<String> tokenRequest = doRequestToken(cameraId);
-    pendingTokenRequests[cameraId] = tokenRequest;
-
-    try {
-      return await tokenRequest;
-    } finally {
-      pendingTokenRequests.remove(cameraId);
-    }
+    return pendingTokenRequests.putIfAbsent(cameraId, () async {
+      try {
+        return await doRequestToken(cameraId);
+      } finally {
+        pendingTokenRequests.remove(cameraId);
+      }
+    });
   }
 
   Future<String> doRequestToken(String cameraId) async {
-    final client = await _clientFor(cameraId);
-    final url = Uri.parse('$baseUrl/pair/token');
-    final pairingToken = await storage.read(key: cameraId) ?? '';
-
-    if (pairingToken.isEmpty) {
-      throw Exception('Pairing token is empty. Please provide a valid pairing token.');
+    final pairingSecret = await storage.read(key: 'pairing_$cameraId') ?? '';
+    if (pairingSecret.isEmpty) {
+      throw Exception(
+          'No pairing secret stored for this camera. Please re-pair it.');
     }
 
-    final response = await client.post(
-      url,
+    final response = await _clientFor(cameraId).post(
+      Uri.parse('$baseUrl/pair/token'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $pairingToken',
+        'Authorization': 'Bearer $pairingSecret',
       },
     ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 401) {
-      throw Exception('Authentication failed. Please check your credentials.');
+      throw Exception(
+          'Pairing secret was rejected by the camera. Please re-pair it.');
+    }
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to obtain session token (HTTP ${response.statusCode}).');
     }
 
-    final Map<String, dynamic> responseData = jsonDecode(response.body);
-    final token = responseData['token'];
-    if (token != null) {
-      await storage.write(key: 'token_$cameraId', value: token);
-      return token;
-    } else {
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final token = data['token'] as String?;
+    if (token == null || token.isEmpty) {
       throw Exception('Token not found in the response.');
     }
+
+    await storage.write(key: 'token_$cameraId', value: token);
+    return token;
   }
 
-  /// Note: this call happens BEFORE a certificate is necessarily pinned
-  /// (pairing mode), so it intentionally uses the plain `http` package.
-  /// It only succeeds if the server's cert is otherwise trusted (or if
-  /// you've already pinned it via getCertificate for this baseUrl/camera).
-  /// If pairing happens over an untrusted TLS cert too, route this through
-  /// the same bootstrap HttpClient pattern used in getCertificate().
-  Future<String> requestPairingToken(String cameraId) async {
-    String url = '$baseUrl/pair';
+  Future<http.Response> get(String endpoint, String cameraId,
+      {bool isRetry = false}) async {
+    final token = isRetry
+        ? await requestToken(cameraId) // force refresh after a 401
+        : await getSessionToken(cameraId); // cached token if we have one
 
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
-      await storage.write(key: cameraId, value: responseData['token']);
-      return responseData['token'];
-    } else {
-      throw Exception('Failed to request pairing token.');
-    }
-  }
-
-  Future<http.Response> get(String endpoint, String cameraId, {bool isRetry = false}) async {
-    final client = await _clientFor(cameraId);
-    final url = Uri.parse('$baseUrl$endpoint');
-
-    final token = await storage.read(key: 'token_$cameraId');
-    final response = await client
-        .get(url, headers: {'Authorization': 'Bearer $token'})
+    final response = await _clientFor(cameraId)
+        .get(Uri.parse('$baseUrl$endpoint'),
+            headers: {'Authorization': 'Bearer $token'})
         .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 401) {
-      // Token has expired or is invalid, request reauthentication
-      await requestToken(cameraId);
-
-      // Retry the request with the new token
-      if (!isRetry) {
-        return get(endpoint, cameraId, isRetry: true);
-      } else {
+      if (isRetry) {
         throw Exception('Reauthentication failed. Please check your credentials.');
       }
+      return get(endpoint, cameraId, isRetry: true);
     }
 
     return response;

@@ -131,7 +131,12 @@ class WebRTCStream {
     RTCSessionDescription localDesc, {
     bool isRetry = false,
   }) async {
-    final token = await networkUtils.requestToken(cameraId);
+    // Use the cached session token when we have one; only mint a brand new
+    // one (via the persistent pairing secret) once we know the cached
+    // token was actually rejected (isRetry == true, see below).
+    final token = isRetry
+        ? await networkUtils.requestToken(cameraId)
+        : await networkUtils.getSessionToken(cameraId);
 
     final response = await http.post(
       Uri.parse('$serverUrl/offer'),
@@ -149,7 +154,6 @@ class WebRTCStream {
       if (isRetry) {
         throw Exception('Reauthentication failed. Please check your credentials.');
       }
-      await networkUtils.requestToken(cameraId);
       return _postOffer(serverUrl, localDesc, isRetry: true);
     }
 

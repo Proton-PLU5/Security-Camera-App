@@ -39,7 +39,7 @@ class _CameraPreviewState extends State<CameraPreview> {
       };
     _webRTCStream.connect('http://${widget.camera.ipAddress}:${widget.camera.port}');
 
-    _detectionStream = DetectionStream()
+    _detectionStream = DetectionStream(networkUtils:_networkUtils!, cameraId: widget.camera.uuid)
       ..connect('ws://${widget.camera.ipAddress}:${widget.camera.port}/websocket/detections');
 
     _detectionStream.detections.listen((detections) {

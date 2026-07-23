@@ -19,6 +19,7 @@ class _CameraAddPageState extends State<CameraAddPage> {
   String cameraName = 'My Camera';
   String cameraLocation = 'Front Door';
   bool congratsPageVisible = true;
+  bool _pairing = false;
   NetworkUtils? _networkUtils;
 
   @override
@@ -124,21 +125,47 @@ class _CameraAddPageState extends State<CameraAddPage> {
           SizedBox(height: 50),
 
           ElevatedButton(
-            onPressed: () {
-              
-              // Handle setup camera action
-              Camera camera = Camera(
-                uuid: widget.camera.uuid,
-                name: cameraName,
-                location: cameraLocation,
-                ipAddress: widget.camera.ip,
-                port: widget.camera.port,
-                version: widget.camera.version
-              );
+            onPressed: _pairing
+              ? null
+              : () async {
+                  setState(() => _pairing = true);
 
-              Navigator.pop(context, camera);
-            },
-            child: const Text('Add Camera'),
+                  try {
+                    // Pair the camera using the NetworkUtils class. This
+                    // must succeed - and be persisted - before we ever
+                    // save the camera, otherwise every later session-token
+                    // request will fail with no pairing secret to use.
+                    await _networkUtils?.requestPairingToken(widget.camera.uuid);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    setState(() => _pairing = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not pair with camera: $e')),
+                    );
+                    return;
+                  }
+
+                  // Handle setup camera action
+                  Camera camera = Camera(
+                    uuid: widget.camera.uuid,
+                    name: cameraName,
+                    location: cameraLocation,
+                    ipAddress: widget.camera.ip,
+                    port: widget.camera.port,
+                    version: widget.camera.version
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context, camera);
+                  }
+                },
+            child: _pairing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Add Camera'),
           ),
         ]
     );
