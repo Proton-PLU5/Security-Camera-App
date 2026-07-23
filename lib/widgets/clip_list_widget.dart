@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/models/camera_clip.dart';
+import 'package:camera_application/utils/api/network.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -23,10 +24,14 @@ class _ClipListWidgetState extends State<ClipListWidget> {
   List<CameraClip> _clips = [];
   bool _isLoading = false;
   String? _errorMessage;
+  late final NetworkUtils _networkUtils;
 
   @override
   void initState() {
     super.initState();
+    _networkUtils = NetworkUtils(
+      'http://${widget.camera.ipAddress}:${widget.camera.port}'
+    );
     _fetchClips();
   }
 
@@ -41,12 +46,8 @@ class _ClipListWidgetState extends State<ClipListWidget> {
       // Get current epoch timestamp in seconds (as expected by your python code)
       final double nowInSeconds = DateTime.now().millisecondsSinceEpoch / 1000;
       
-      // Construct URL pointing to your backend endpoint
-      final Uri url = Uri.parse(
-        'http://${widget.camera.ipAddress}:${widget.camera.port}/clips?before=$nowInSeconds'
-      );
-
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      // Send a GET request to the camera to fetch clips that ended before the current time
+      final http.Response response = await _networkUtils.get("/clips?before=$nowInSeconds", widget.camera.uuid);
 
       if (response.statusCode == 200) {
         final List<dynamic> rawData = jsonDecode(response.body);
