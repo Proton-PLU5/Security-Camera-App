@@ -10,10 +10,7 @@ import '../models/camera_clip.dart';
 class CameraPage extends StatefulWidget {
   final Camera camera;
 
-  const CameraPage({
-    super.key,
-    required this.camera,
-  });
+  const CameraPage({super.key, required this.camera});
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -21,9 +18,18 @@ class CameraPage extends StatefulWidget {
 
 class _CameraPageState extends State<CameraPage> {
   Timer? _timer;
-  ValueNotifier<String> currentTimeNotifier = ValueNotifier<String>(DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now()));
+  ValueNotifier<String> currentTimeNotifier = ValueNotifier<String>(
+    DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now()),
+  );
   bool get viewingPreview => _selectedClip == null;
   CameraClip? _selectedClip;
+
+  // Toggle states for camera controls
+  bool _isMicEnabled = false;
+  bool _isFlashlightOn = false;
+  bool _isNightVisionOn = false;
+  bool _isSirenOn = false;
+  bool _showClipList = false;
 
   @override
   void initState() {
@@ -32,12 +38,13 @@ class _CameraPageState extends State<CameraPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
         if (_selectedClip == null) {
-          currentTimeNotifier.value =
-              DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now());
+          currentTimeNotifier.value = DateFormat(
+            'EEE, MMM d yyyy HH:mm:ss',
+          ).format(DateTime.now());
         } else {
-          currentTimeNotifier.value =
-              DateFormat('EEE, MMM d yyyy HH:mm:ss')
-                  .format(_selectedClip!.startedAt);
+          currentTimeNotifier.value = DateFormat(
+            'EEE, MMM d yyyy HH:mm:ss',
+          ).format(_selectedClip!.startedAt);
         }
       });
     });
@@ -59,7 +66,9 @@ class _CameraPageState extends State<CameraPage> {
           title: const Text('Rename Camera'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(hintText: 'Enter new camera name'),
+            decoration: const InputDecoration(
+              hintText: 'Enter new camera name',
+            ),
           ),
           actions: [
             TextButton(
@@ -150,11 +159,205 @@ class _CameraPageState extends State<CameraPage> {
 
   void updateTimeCallback(double currentSeconds) {
     setState(() {
-      final displayTime = _selectedClip!.startedAt
-            .add(Duration(milliseconds: (currentSeconds * 1000).round()));
-      
-      currentTimeNotifier.value = DateFormat('EEE, MMM d yyyy HH:mm:ss').format(displayTime);
+      final displayTime = _selectedClip!.startedAt.add(
+        Duration(milliseconds: (currentSeconds * 1000).round()),
+      );
+
+      currentTimeNotifier.value = DateFormat(
+        'EEE, MMM d yyyy HH:mm:ss',
+      ).format(displayTime);
     });
+  }
+
+  /// Builds a single square control tile for the 2×3 grid.
+  Widget _buildControlTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    bool isActive = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onPressed,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isActive
+                ? Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isActive
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey.shade300,
+              width: isActive ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: isActive
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey.shade700,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  color: isActive
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey.shade700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows a bottom sheet with directional pan/tilt controls.
+  void _showPanTiltSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pan & Tilt',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Directional pad layout
+              SizedBox(
+                width: 180,
+                height: 180,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Up
+                    Positioned(
+                      top: 0,
+                      child: _buildDirectionButton(
+                        icon: Icons.arrow_upward,
+                        label: 'Up',
+                        onPressed: () {
+                          // TODO: Send tilt-up command
+                        },
+                      ),
+                    ),
+                    // Down
+                    Positioned(
+                      bottom: 0,
+                      child: _buildDirectionButton(
+                        icon: Icons.arrow_downward,
+                        label: 'Down',
+                        onPressed: () {
+                          // TODO: Send tilt-down command
+                        },
+                      ),
+                    ),
+                    // Left
+                    Positioned(
+                      left: 0,
+                      child: _buildDirectionButton(
+                        icon: Icons.arrow_back,
+                        label: 'Left',
+                        onPressed: () {
+                          // TODO: Send pan-left command
+                        },
+                      ),
+                    ),
+                    // Right
+                    Positioned(
+                      right: 0,
+                      child: _buildDirectionButton(
+                        icon: Icons.arrow_forward,
+                        label: 'Right',
+                        onPressed: () {
+                          // TODO: Send pan-right command
+                        },
+                      ),
+                    ),
+                    // Center indicator
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade200,
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Icon(
+                        Icons.control_camera,
+                        size: 20,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds a single directional button for the pan/tilt bottom sheet.
+  Widget _buildDirectionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 22, color: Colors.grey.shade700),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 8, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -201,76 +404,214 @@ class _CameraPageState extends State<CameraPage> {
                 ),
                 PopupMenuItem<String>(
                   value: 'mark_favorite',
-                  child: Text(widget.camera.isFavorite ? 'Unmark Favorite' : 'Mark as Favorite'),
+                  child: Text(
+                    widget.camera.isFavorite
+                        ? 'Unmark Favorite'
+                        : 'Mark as Favorite',
+                  ),
                 ),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
                   value: 'remove',
-                  child: Text('Remove Camera', style: TextStyle(color: Colors.red)),
+                  child: Text(
+                    'Remove Camera',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ];
             },
-          )
+          ),
         ],
       ),
       body: Column(
         children: [
+          // Camera preview or clip player
           _selectedClip == null
-            ? CameraPreview(camera: widget.camera)
-            : CameraClipPlayer(
-                // Adding this Key forces Flutter to reconstruct the player state for a new clip
-                key: ValueKey(_selectedClip!.id), 
-                camera: widget.camera, 
-                clip: _selectedClip!,
-                updateTimeCallback: updateTimeCallback,
-              ),
-          
+              ? CameraPreview(camera: widget.camera)
+              : CameraClipPlayer(
+                  // Adding this Key forces Flutter to reconstruct the player state for a new clip
+                  key: ValueKey(_selectedClip!.id),
+                  camera: widget.camera,
+                  clip: _selectedClip!,
+                  updateTimeCallback: updateTimeCallback,
+                ),
 
-          // Action bar for camera actions
+          // Time display and live/fullscreen controls
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ValueListenableBuilder(valueListenable: currentTimeNotifier, builder: (context, value, child) {
-                  return Text(
-                    value,
-                    style: const TextStyle(fontSize: 20),
-                  );
-                })
-              ),
-              Row(children: [
-                if (_selectedClip != null)
-                  IconButton(
-                    icon: const Icon(Icons.videocam, size: 28),
-                    onPressed: () {
-                      // Handle camera action
-                      setState(() {
-                        _selectedClip = null; // Switch to camera preview
-                      });
-                    },
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.fullscreen, size: 28),
-                  onPressed: () {
-                    // Handle camera action
+                child: ValueListenableBuilder(
+                  valueListenable: currentTimeNotifier,
+                  builder: (context, value, child) {
+                    return Text(value, style: const TextStyle(fontSize: 20));
                   },
                 ),
-              ],)
+              ),
+              Row(
+                children: [
+                  if (_selectedClip != null)
+                    IconButton(
+                      icon: const Icon(Icons.videocam, size: 28),
+                      onPressed: () {
+                        setState(() {
+                          _selectedClip = null; // Switch to camera preview
+                        });
+                      },
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.fullscreen, size: 28),
+                    onPressed: () {
+                      // Handle fullscreen action
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          
-          Expanded(
-            child: ClipListWidget(camera: widget.camera, onClipSelected: (clip) {
-              // Handle clip selection
-              setState(() {
-                _selectedClip = clip;
-              });
-            }),
+          const SizedBox(height: 4),
+
+          // 2×3 grid camera control panel
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: GridView.count(
+              crossAxisCount: 3,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.0,
+              children: [
+                _buildControlTile(
+                  icon: _isMicEnabled ? Icons.mic : Icons.mic_off,
+                  label: _isMicEnabled ? 'Mic On' : 'Mic Off',
+                  isActive: _isMicEnabled,
+                  onPressed: () {
+                    setState(() => _isMicEnabled = !_isMicEnabled);
+                  },
+                ),
+                _buildControlTile(
+                  icon: _isFlashlightOn
+                      ? Icons.flashlight_on
+                      : Icons.flashlight_off,
+                  label: _isFlashlightOn ? 'Light On' : 'Light Off',
+                  isActive: _isFlashlightOn,
+                  onPressed: () {
+                    setState(() => _isFlashlightOn = !_isFlashlightOn);
+                  },
+                ),
+                _buildControlTile(
+                  icon: Icons.control_camera,
+                  label: 'Pan / Tilt',
+                  onPressed: _showPanTiltSheet,
+                ),
+                _buildControlTile(
+                  icon: _isNightVisionOn
+                      ? Icons.nightlight
+                      : Icons.nightlight_outlined,
+                  label: _isNightVisionOn ? 'Night On' : 'Night Off',
+                  isActive: _isNightVisionOn,
+                  onPressed: () {
+                    setState(() => _isNightVisionOn = !_isNightVisionOn);
+                  },
+                ),
+                _buildControlTile(
+                  icon: Icons.camera_alt_outlined,
+                  label: 'Snapshot',
+                  onPressed: () {
+                    // TODO: Capture a still snapshot from the camera feed
+                  },
+                ),
+                _buildControlTile(
+                  icon: _isSirenOn ? Icons.campaign : Icons.campaign_outlined,
+                  label: _isSirenOn ? 'Siren On' : 'Siren Off',
+                  isActive: _isSirenOn,
+                  onPressed: () {
+                    setState(() => _isSirenOn = !_isSirenOn);
+                  },
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 8),
+
+          // View Clips button — styled to match control tile theme
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () {
+                  setState(() => _showClipList = !_showClipList);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _showClipList
+                        ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _showClipList
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey.shade300,
+                      width: _showClipList ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _showClipList
+                            ? Icons.expand_less
+                            : Icons.video_library,
+                        size: 20,
+                        color: _showClipList
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade700,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _showClipList ? 'Hide Clips' : 'View Clips',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: _showClipList
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: _showClipList
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+
+          // Clip list (shown only when toggled)
+          if (_showClipList)
+            Expanded(
+              child: ClipListWidget(
+                camera: widget.camera,
+                onClipSelected: (clip) {
+                  // Handle clip selection
+                  setState(() {
+                    _selectedClip = clip;
+                  });
+                },
+              ),
+            ),
         ],
-      )
+      ),
     );
   }
 }

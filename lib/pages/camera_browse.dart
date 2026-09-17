@@ -14,7 +14,6 @@ class CameraBrowsePage extends StatefulWidget {
 }
 
 class _CameraBrowsePageState extends State<CameraBrowsePage> {
-
   bool isSearching = true;
   final List<DiscoveredCamera> cameras = [];
   CameraDiscoveryService? _discoveryService;
@@ -25,17 +24,6 @@ class _CameraBrowsePageState extends State<CameraBrowsePage> {
     _discoveryService = CameraDiscoveryService();
 
     search();
-
-    // Fake camera data for testing
-    DiscoveredCamera fakeCamera1 = DiscoveredCamera(
-      uuid: 'camera1',
-      name: 'Camera 1',
-      ip: '192.168.0.161',
-      port: 8080,
-      version: '1.0',
-    );
-
-    cameras.add(fakeCamera1);
   }
 
   void search() {
@@ -59,23 +47,27 @@ class _CameraBrowsePageState extends State<CameraBrowsePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: isSearching ? Text('Searching for Cameras') : Text('Discovered ${cameras.length} Cameras'),
+        title: isSearching
+            ? Text('Searching for Cameras')
+            : Text('Discovered ${cameras.length} Cameras'),
       ),
       body: Column(
         children: [
-          if (isSearching)
-            const LinearProgressIndicator(),
-          
+          if (isSearching) const LinearProgressIndicator(),
+
           Stack(
             children: [
-              Positioned(child: 
-                WifiSearchIcon(isSearching: isSearching, onTap: () {
-                  if (!isSearching) {
-                    search();
-                  }
-                }),
+              Positioned(
+                child: WifiSearchIcon(
+                  isSearching: isSearching,
+                  onTap: () {
+                    if (!isSearching) {
+                      search();
+                    }
+                  },
+                ),
               ),
-            ]
+            ],
           ),
 
           Expanded(
@@ -102,7 +94,9 @@ class _CameraBrowsePageState extends State<CameraBrowsePage> {
                     // Handle camera selection
                     final setupCamera = await Navigator.push<Camera>(
                       context,
-                      MaterialPageRoute(builder: (context) => CameraAddPage(camera: camera)),
+                      MaterialPageRoute(
+                        builder: (context) => CameraAddPage(camera: camera),
+                      ),
                     );
 
                     if (setupCamera != null && context.mounted) {

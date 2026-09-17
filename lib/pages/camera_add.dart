@@ -6,10 +6,7 @@ import 'package:flutter/material.dart';
 class CameraAddPage extends StatefulWidget {
   final DiscoveredCamera camera;
 
-  const CameraAddPage({
-    super.key,
-    required this.camera,
-  });
+  const CameraAddPage({super.key, required this.camera});
 
   @override
   State<CameraAddPage> createState() => _CameraAddPageState();
@@ -26,106 +23,92 @@ class _CameraAddPageState extends State<CameraAddPage> {
   void initState() {
     super.initState();
     _networkUtils = NetworkUtils(
-      'http://${widget.camera.ip}:${widget.camera.port}'
+      'http://${widget.camera.ip}:${widget.camera.port}',
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
-
     Column congratsPage = Column(
-        children: [
-          SizedBox(height: 50),
-          Center(
-            child: Icon(
-              Icons.thumb_up_rounded,
-              size: 128,
-            )
+      children: [
+        SizedBox(height: 50),
+        Center(child: Icon(Icons.thumb_up_rounded, size: 128)),
+        SizedBox(height: 20),
+        Center(
+          child: Text(
+            "Congratulations on your new camera!\n Let's get it set up.",
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14),
           ),
-          SizedBox(height: 20),
-          Center(
-            child: Text(
-              "Congratulations on your new camera!\n Let's get it set up.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14),
-            ),
+        ),
+        SizedBox(height: 50),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            fixedSize: const Size(200, 50),
           ),
-          SizedBox(height: 50),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              fixedSize: const Size(200, 50),
-            ),
-            onPressed: () {
-              setState(() {
-                congratsPageVisible = false;
-              });
-            },
-            child: const Text('Continue'),
-          ),
-        ]
+          onPressed: () {
+            setState(() {
+              congratsPageVisible = false;
+            });
+          },
+          child: const Text('Continue'),
+        ),
+      ],
     );
 
     Column setupPage = Column(
-        children: [
-          SizedBox(height: 50),
-          Center(
-            child: const Text(
-              "Let's set up your camera.",
-              style: const TextStyle(fontSize: 20),
-            ),
+      children: [
+        SizedBox(height: 50),
+        Center(
+          child: const Text(
+            "Let's set up your camera.",
+            style: TextStyle(fontSize: 20),
           ),
+        ),
 
-          // Setup form fields for camera configuration
-          // Camera Name (label and text field)
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: 16.0, top: 32.0),
-            child: const Text(
-              'Camera Name',
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-            decoration: const InputDecoration(
-              labelText: 'My Camera',
-            ),
+        // Setup form fields for camera configuration
+        // Camera Name (label and text field)
+        Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 16.0, top: 32.0),
+          child: const Text('Camera Name', style: TextStyle(fontSize: 16)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            decoration: const InputDecoration(labelText: 'My Camera'),
             onChanged: (value) {
               setState(() {
                 cameraName = value;
               });
             },
           ),
-          ),
+        ),
 
-          // Camera Location (label and text field)
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: 16.0, top: 32.0),
-            child: const Text(
-              'Camera Location',
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-            decoration: const InputDecoration(
-              labelText: 'Front Door',
-            ),
+        // Camera Location (label and text field)
+        Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 16.0, top: 32.0),
+          child: const Text('Camera Location', style: TextStyle(fontSize: 16)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            decoration: const InputDecoration(labelText: 'Front Door'),
             onChanged: (value) {
               setState(() {
                 cameraLocation = value;
               });
             },
           ),
-          ),
+        ),
 
-          SizedBox(height: 50),
+        SizedBox(height: 50),
 
-          ElevatedButton(
-            onPressed: _pairing
+        ElevatedButton(
+          onPressed: _pairing
               ? null
               : () async {
                   setState(() => _pairing = true);
@@ -135,7 +118,9 @@ class _CameraAddPageState extends State<CameraAddPage> {
                     // must succeed - and be persisted - before we ever
                     // save the camera, otherwise every later session-token
                     // request will fail with no pairing secret to use.
-                    await _networkUtils?.requestPairingToken(widget.camera.uuid);
+                    await _networkUtils?.requestPairingToken(
+                      widget.camera.uuid,
+                    );
                   } catch (e) {
                     if (!context.mounted) return;
                     setState(() => _pairing = false);
@@ -152,28 +137,26 @@ class _CameraAddPageState extends State<CameraAddPage> {
                     location: cameraLocation,
                     ipAddress: widget.camera.ip,
                     port: widget.camera.port,
-                    version: widget.camera.version
+                    version: widget.camera.version,
                   );
 
                   if (context.mounted) {
                     Navigator.pop(context, camera);
                   }
                 },
-            child: _pairing
+          child: _pairing
               ? const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Add Camera'),
-          ),
-        ]
+        ),
+      ],
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Camera'),
-      ),
+      appBar: AppBar(title: const Text('Add Camera')),
       body: congratsPageVisible ? congratsPage : setupPage,
     );
   }
