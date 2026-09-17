@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:camera_application/models/camera.dart';
 import 'package:camera_application/models/detection.dart';
 import 'package:camera_application/utils/detection_overlay_painter.dart';
@@ -22,6 +24,16 @@ class _CameraPreviewState extends State<CameraPreview> {
   bool _hasStream = false;
   List<Detection> _detections = [];
   NetworkUtils? _networkUtils;
+
+  ImageProvider get _previewImage {
+    final imageFile = File(widget.camera.imagePath);
+    if (imageFile.isAbsolute) {
+      return imageFile.existsSync()
+          ? FileImage(imageFile)
+          : const AssetImage('assets/placeholder.jpg');
+    }
+    return AssetImage(widget.camera.imagePath);
+  }
 
   @override
   void initState() {
@@ -73,7 +85,7 @@ class _CameraPreviewState extends State<CameraPreview> {
                 children: [
                   AspectRatio(
                     aspectRatio: (960 / 544),
-                    child: Image.asset(widget.camera.imagePath, fit: BoxFit.cover)
+                    child: Image(image: _previewImage, fit: BoxFit.cover)
                   ),
                   Center(
                     child: CircularProgressIndicator(

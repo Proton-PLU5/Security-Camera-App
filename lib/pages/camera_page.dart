@@ -5,6 +5,8 @@ import 'package:camera_application/widgets/clip_list_widget.dart';
 import 'package:camera_application/widgets/pan_tilt_bottom_sheet.dart';
 import 'package:camera_application/widgets/patrol_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:camera_application/utils/api/network.dart';
+import 'package:camera_application/utils/snapshot_storage.dart';
 import '../models/camera.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
@@ -221,6 +223,39 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _takeSnapshot() async {
+    final networkUtils = NetworkUtils(
+      'http://${widget.camera.ipAddress}:${widget.camera.port}',
+    );
+
+    try {
+      final response = await networkUtils.getSnapshot(widget.camera.uuid);
+      if (response.statusCode != 200) {
+        throw Exception('Camera returned HTTP ${response.statusCode}.');
+      }
+      if (response.bodyBytes.isEmpty) {
+        throw Exception('Camera returned an empty snapshot.');
+      }
+
+      final snapshot = await SnapshotStorage.save(
+        cameraId: widget.camera.uuid,
+        jpegBytes: response.bodyBytes,
+      );
+      widget.camera.imagePath = snapshot.path;
+      await widget.camera.save();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Snapshot saved to Files.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not take snapshot: $error')),
+      );
+    }
+  }
+
 
 
   @override
@@ -353,9 +388,7 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
             onNightVisionToggle: () {
               setState(() => _isNightVisionOn = !_isNightVisionOn);
             },
-            onSnapshotTap: () {
-              // TODO: Capture a still snapshot from the camera feed
-            },
+            onSnapshotTap: _takeSnapshot,
             onPatrolTap: _openPatrolSheet,
           ),
 

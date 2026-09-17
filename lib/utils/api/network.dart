@@ -127,4 +127,8 @@ class NetworkUtils {
 
     return response;
   }
+
+  /// Fetches the most recent JPEG buffered by the camera.
+  Future<http.Response> getSnapshot(String cameraId) =>
+      get('/snapshot', cameraId);
 }

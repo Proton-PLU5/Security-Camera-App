@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:camera_application/data/TText.dart';
 import 'package:camera_application/pages/settings.dart';
 import 'package:camera_application/utils/api/network.dart';
@@ -60,6 +62,16 @@ class _MyHomePageState extends State<MyHomePage> {
   int get itemCount => selectedCameraTab == 0
       ? cameraBox.values.where((c) => c.isFavorite).length
       : cameraBox.length;
+
+  ImageProvider _cameraImage(Camera camera) {
+    final imageFile = File(camera.imagePath);
+    if (imageFile.isAbsolute) {
+      return imageFile.existsSync()
+          ? FileImage(imageFile)
+          : const AssetImage('assets/placeholder.jpg');
+    }
+    return AssetImage(camera.imagePath);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,9 +215,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       children: [
                         // Preview Image
                         Image(
-                          image: AssetImage(
-                            itemAt(index).imagePath,
-                          ), // Placeholder
+                          image: _cameraImage(itemAt(index)),
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: 90,
