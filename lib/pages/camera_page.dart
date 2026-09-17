@@ -16,7 +16,7 @@ class CameraPage extends StatefulWidget {
   State<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
+class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   Timer? _timer;
   ValueNotifier<String> currentTimeNotifier = ValueNotifier<String>(
     DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now()),
@@ -31,9 +31,16 @@ class _CameraPageState extends State<CameraPage> {
   bool _isSirenOn = false;
   bool _showClipList = false;
 
+  late final AnimationController _panelAnimationController;
+
   @override
   void initState() {
     super.initState();
+    _panelAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      value: 1.0,
+    );
     // Update the current time every second
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
@@ -53,6 +60,7 @@ class _CameraPageState extends State<CameraPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _panelAnimationController.dispose();
     super.dispose();
   }
 
@@ -184,9 +192,7 @@ class _CameraPageState extends State<CameraPage> {
         child: Container(
           decoration: BoxDecoration(
             color: isActive
-                ? Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.15)
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
@@ -360,6 +366,132 @@ class _CameraPageState extends State<CameraPage> {
     );
   }
 
+  void _toggleClipList() {
+    setState(() {
+      _showClipList = !_showClipList;
+    });
+    if (_showClipList) {
+      _panelAnimationController.reverse();
+    } else {
+      _panelAnimationController.forward();
+    }
+  }
+
+  /// Builds the 2×3 camera control panel with matching collapse/expand animations:
+  /// - Collapsing: collapses upward into the top edge with vertical shrink,
+  ///   an upward fractional slide, and graceful fade-out.
+  /// - Expanding: mirrors the collapse animation, sliding down smoothly from the
+  ///   top edge while expanding vertically and fading in.
+  Widget _buildAnimatedControlPanel() {
+    return AnimatedBuilder(
+      animation: _panelAnimationController,
+      builder: (context, child) {
+        final double value = _panelAnimationController.value;
+        if (value == 0.0) {
+          return const SizedBox.shrink();
+        }
+
+        // Smooth curved factor for vertical height expansion/collapse
+        final double heightFactor = Curves.easeInOutCubic.transform(value);
+        final double opacity = value.clamp(0.0, 1.0);
+
+        // Slide upward when collapsing, slide downward from top into place when expanding
+        final double slideY = -0.45 * (1.0 - heightFactor);
+
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: heightFactor,
+            child: FractionalTranslation(
+              translation: Offset(0.0, slideY),
+              child: Opacity(
+                opacity: opacity,
+                child: IgnorePointer(
+                  ignoring: _showClipList,
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: GridView.count(
+              crossAxisCount: 3,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.0,
+              children: [
+                _buildControlTile(
+                  icon: _isMicEnabled ? Icons.mic : Icons.mic_off,
+                  label: _isMicEnabled ? 'Mic On' : 'Mic Off',
+                  isActive: _isMicEnabled,
+                  onPressed: () {
+                    setState(
+                      () => _isMicEnabled = !_isMicEnabled,
+                    );
+                  },
+                ),
+                _buildControlTile(
+                  icon: _isFlashlightOn
+                      ? Icons.flashlight_on
+                      : Icons.flashlight_off,
+                  label: _isFlashlightOn ? 'Light On' : 'Light Off',
+                  isActive: _isFlashlightOn,
+                  onPressed: () {
+                    setState(
+                      () => _isFlashlightOn = !_isFlashlightOn,
+                    );
+                  },
+                ),
+                _buildControlTile(
+                  icon: Icons.control_camera,
+                  label: 'Pan / Tilt',
+                  onPressed: _showPanTiltSheet,
+                ),
+                _buildControlTile(
+                  icon: _isNightVisionOn
+                      ? Icons.nightlight
+                      : Icons.nightlight_outlined,
+                  label: _isNightVisionOn ? 'Night On' : 'Night Off',
+                  isActive: _isNightVisionOn,
+                  onPressed: () {
+                    setState(
+                      () => _isNightVisionOn = !_isNightVisionOn,
+                    );
+                  },
+                ),
+                _buildControlTile(
+                  icon: Icons.camera_alt_outlined,
+                  label: 'Snapshot',
+                  onPressed: () {
+                    // TODO: Capture a still snapshot from the camera feed
+                  },
+                ),
+                _buildControlTile(
+                  icon: _isSirenOn
+                      ? Icons.campaign
+                      : Icons.campaign_outlined,
+                  label: _isSirenOn ? 'Siren On' : 'Siren Off',
+                  isActive: _isSirenOn,
+                  onPressed: () {
+                    setState(() => _isSirenOn = !_isSirenOn);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -472,69 +604,8 @@ class _CameraPageState extends State<CameraPage> {
           ),
           const SizedBox(height: 4),
 
-          // 2×3 grid camera control panel
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: GridView.count(
-              crossAxisCount: 3,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.0,
-              children: [
-                _buildControlTile(
-                  icon: _isMicEnabled ? Icons.mic : Icons.mic_off,
-                  label: _isMicEnabled ? 'Mic On' : 'Mic Off',
-                  isActive: _isMicEnabled,
-                  onPressed: () {
-                    setState(() => _isMicEnabled = !_isMicEnabled);
-                  },
-                ),
-                _buildControlTile(
-                  icon: _isFlashlightOn
-                      ? Icons.flashlight_on
-                      : Icons.flashlight_off,
-                  label: _isFlashlightOn ? 'Light On' : 'Light Off',
-                  isActive: _isFlashlightOn,
-                  onPressed: () {
-                    setState(() => _isFlashlightOn = !_isFlashlightOn);
-                  },
-                ),
-                _buildControlTile(
-                  icon: Icons.control_camera,
-                  label: 'Pan / Tilt',
-                  onPressed: _showPanTiltSheet,
-                ),
-                _buildControlTile(
-                  icon: _isNightVisionOn
-                      ? Icons.nightlight
-                      : Icons.nightlight_outlined,
-                  label: _isNightVisionOn ? 'Night On' : 'Night Off',
-                  isActive: _isNightVisionOn,
-                  onPressed: () {
-                    setState(() => _isNightVisionOn = !_isNightVisionOn);
-                  },
-                ),
-                _buildControlTile(
-                  icon: Icons.camera_alt_outlined,
-                  label: 'Snapshot',
-                  onPressed: () {
-                    // TODO: Capture a still snapshot from the camera feed
-                  },
-                ),
-                _buildControlTile(
-                  icon: _isSirenOn ? Icons.campaign : Icons.campaign_outlined,
-                  label: _isSirenOn ? 'Siren On' : 'Siren Off',
-                  isActive: _isSirenOn,
-                  onPressed: () {
-                    setState(() => _isSirenOn = !_isSirenOn);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
+          // 2×3 grid camera control panel — animates collapse upward / expand sideways
+          _buildAnimatedControlPanel(),
 
           // View Clips button — styled to match control tile theme
           Padding(
@@ -543,18 +614,15 @@ class _CameraPageState extends State<CameraPage> {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  setState(() => _showClipList = !_showClipList);
-                },
+                onTap: _toggleClipList,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: _showClipList
-                        ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.15)
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
@@ -568,9 +636,7 @@ class _CameraPageState extends State<CameraPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _showClipList
-                            ? Icons.expand_less
-                            : Icons.video_library,
+                        _showClipList ? Icons.expand_less : Icons.video_library,
                         size: 20,
                         color: _showClipList
                             ? Theme.of(context).colorScheme.primary
@@ -600,14 +666,25 @@ class _CameraPageState extends State<CameraPage> {
           // Clip list (shown only when toggled)
           if (_showClipList)
             Expanded(
-              child: ClipListWidget(
-                camera: widget.camera,
-                onClipSelected: (clip) {
-                  // Handle clip selection
-                  setState(() {
-                    _selectedClip = clip;
-                  });
+              child: AnimatedBuilder(
+                animation: _panelAnimationController,
+                builder: (context, child) {
+                  final double clipOpacity =
+                      (1.0 - _panelAnimationController.value).clamp(0.0, 1.0);
+                  return Opacity(
+                    opacity: clipOpacity,
+                    child: child,
+                  );
                 },
+                child: ClipListWidget(
+                  camera: widget.camera,
+                  onClipSelected: (clip) {
+                    // Handle clip selection
+                    setState(() {
+                      _selectedClip = clip;
+                    });
+                  },
+                ),
               ),
             ),
         ],

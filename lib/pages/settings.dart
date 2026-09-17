@@ -1,7 +1,6 @@
 import 'package:camera_application/data/TText.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,27 +10,23 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-
   FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
-  Future<String> get username async => await secureStorage.read(key: 'username') ?? 'Unknown User';
+  Future<String> get username async =>
+      await secureStorage.read(key: 'username') ?? 'Unknown User';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: Column(
         children: [
-
           SizedBox(height: 16.0),
 
           // User Profile Section
-
           const SizedBox(height: 16.0),
-          // Divider
 
+          // Divider
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -42,7 +37,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   endIndent: 16.0,
                 ),
               ),
-              Text(TText.settingsSectionTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+              Text(
+                TText.settingsSectionTitle,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+              ),
               Flexible(
                 child: Divider(
                   color: Colors.grey,
@@ -52,9 +54,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
           ),
-
         ],
-      )
+      ),
     );
   }
 }

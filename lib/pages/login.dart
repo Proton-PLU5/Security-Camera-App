@@ -1,4 +1,3 @@
-
 import 'package:camera_application/data/TSizes.dart';
 import 'package:camera_application/data/TText.dart';
 import 'package:camera_application/pages/home.dart';
@@ -7,12 +6,13 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
   FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
   String username = '';
@@ -44,26 +44,32 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // LOGO
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.security, size: 100, color: Colors.blue),
-                  Text(TText.loginTitle, style: TextStyle(
-                    fontSize: TSizes.headingFontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  )),
+                  Text(
+                    TText.loginTitle,
+                    style: TextStyle(
+                      fontSize: TSizes.headingFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
                   SizedBox(height: 16.0),
-                  Text(TText.loginPrompt, style: TextStyle(
-                    fontSize: TSizes.regularFontSize,
-                    color: Colors.grey[600],
-                  )),
+                  Text(
+                    TText.loginPrompt,
+                    style: TextStyle(
+                      fontSize: TSizes.regularFontSize,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                   SizedBox(height: 32.0),
-                ]
+                ],
               ),
-              Form(child: Column(
+              Form(
+                child: Column(
                   children: [
                     /// USERNAME
                     TextFormField(
@@ -111,16 +117,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(TText.loginButtonText),
                       ),
-                    )
-                  ]
-                )
-              )
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-        )
-      )
+        ),
+      ),
     );
   }
-  
 }
-

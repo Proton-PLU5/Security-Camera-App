@@ -15,11 +15,10 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
   int selectedCameraTab = 0; // Default to 2 columns
   final List<Camera> favoriteCameraBox = [];
   final Box<Camera> cameraBox = Hive.box<Camera>('cameras');
-  
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
   }
-  
+
   void addCamera() {
     final newCamera = Camera(
       name: 'New Camera',
@@ -42,7 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
       uuid: DateTime.now().millisecondsSinceEpoch.toString(),
       ipAddress: '192.168.0.161',
       port: 8080,
-      version: '1.0.0'
+      version: '1.0.0',
     );
 
     if (selectedCameraTab == 0) {
@@ -55,12 +54,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Camera itemAt(int index) => selectedCameraTab == 0
-    ? cameraBox.values.where((c) => c.isFavorite).toList()[index]
-    : cameraBox.getAt(index)!;
+      ? cameraBox.values.where((c) => c.isFavorite).toList()[index]
+      : cameraBox.getAt(index)!;
 
   int get itemCount => selectedCameraTab == 0
-    ? cameraBox.values.where((c) => c.isFavorite).length
-    : cameraBox.length;
+      ? cameraBox.values.where((c) => c.isFavorite).length
+      : cameraBox.length;
 
   @override
   Widget build(BuildContext context) {
@@ -71,19 +70,26 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: Text(TText.homeTabName, style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ))
+              child: Text(
+                TText.homeTabName,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
             IconButton(
-              icon: const Icon(Icons.notifications, color: Colors.white, size: 28),
+              icon: const Icon(
+                Icons.notifications,
+                color: Colors.white,
+                size: 28,
+              ),
               onPressed: () {
                 // Handle notifications action
               },
             ),
-          ]
+          ],
         ),
         backgroundColor: Colors.blue,
       ),
@@ -99,11 +105,16 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                   // Handle favorites action
                 },
-                child: Text(TText.homeFavouriteCamerasTabName, style: TextStyle(
-                  color: Colors.blue,
-                  fontSize: 16,
-                  fontWeight: selectedCameraTab == 0 ? FontWeight.bold : FontWeight.normal,
-                )),
+                child: Text(
+                  TText.homeFavouriteCamerasTabName,
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: selectedCameraTab == 0
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
               ),
               TextButton(
                 onPressed: () {
@@ -112,11 +123,16 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                   // Handle all cameras action
                 },
-                child: Text(TText.homeAllCamerasTabName, style: TextStyle(
-                  color: Colors.blue,
-                  fontSize: 16,
-                  fontWeight: selectedCameraTab == 1 ? FontWeight.bold : FontWeight.normal,
-                )),
+                child: Text(
+                  TText.homeAllCamerasTabName,
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: selectedCameraTab == 1
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
               ),
             ],
           ),
@@ -128,132 +144,132 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
 
           itemCount <= 0
-            ? Text(TText.homeNoCamerasMessage, style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ))
-            : const SizedBox.shrink(),
+              ? Text(
+                  TText.homeNoCamerasMessage,
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                )
+              : const SizedBox.shrink(),
 
           Expanded(
             child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,      // 2 columns
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.2,  // Width / Height
-                ),
-                itemCount: itemCount, // Number of cameras
-                itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 3,
-                    clipBehavior: Clip.antiAlias,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-
-                    child: InkWell(
-                      onTap: () async {
-
-                        // Warm the session-token cache for this camera
-                        // before opening its page, so the preview / clip
-                        // list don't have to eat a 401 round-trip on
-                        // first load. Uses the cached token if we still
-                        // have a valid one - only reaches out to the
-                        // camera if we don't.
-                        NetworkUtils networkUtils = NetworkUtils(
-                          'http://${itemAt(index).ipAddress}:${itemAt(index).port}',
-                        );
-
-                        try {
-                          await networkUtils.getSessionToken(itemAt(index).uuid);
-                        } catch (error) {
-                          debugPrint(
-                            'Could not obtain a session token for ${itemAt(index).name}: $error',
-                          );
-                        }
-
-                        // Open camera page
-                        await Navigator.push(context, 
-                          MaterialPageRoute(
-                            builder: (context) => CameraPage(
-                              camera: itemAt(index),
-                            )
-                          )
-                        );
-
-                        setState(() {});
-                      },
-                      child: Stack(
-                        children: [
-                          // Preview Image
-                          Image(
-                            image: AssetImage(itemAt(index).imagePath), // Placeholder
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: 90,
-                          ),
-                          // Camera Icon
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.blue,
-                              child: const Icon(
-                                Icons.videocam_outlined,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          // Name + location
-                          Positioned(
-                            left: 10,
-                            bottom: 10,
-                            right: 16,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              spacing: 0,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  itemAt(index).name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  itemAt(index).location,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ]
-                      )
-                    )
-                  );
-                },
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, // 2 columns
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.2, // Width / Height
               ),
+              itemCount: itemCount, // Number of cameras
+              itemBuilder: (context, index) {
+                return Card(
+                  elevation: 3,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+
+                  child: InkWell(
+                    onTap: () async {
+                      // Warm the session-token cache for this camera
+                      // before opening its page, so the preview / clip
+                      // list don't have to eat a 401 round-trip on
+                      // first load. Uses the cached token if we still
+                      // have a valid one - only reaches out to the
+                      // camera if we don't.
+                      NetworkUtils networkUtils = NetworkUtils(
+                        'http://${itemAt(index).ipAddress}:${itemAt(index).port}',
+                      );
+
+                      try {
+                        await networkUtils.getSessionToken(itemAt(index).uuid);
+                      } catch (error) {
+                        debugPrint(
+                          'Could not obtain a session token for ${itemAt(index).name}: $error',
+                        );
+                      }
+
+                      // Open camera page
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CameraPage(camera: itemAt(index)),
+                        ),
+                      );
+
+                      setState(() {});
+                    },
+                    child: Stack(
+                      children: [
+                        // Preview Image
+                        Image(
+                          image: AssetImage(
+                            itemAt(index).imagePath,
+                          ), // Placeholder
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 90,
+                        ),
+                        // Camera Icon
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.blue,
+                            child: const Icon(
+                              Icons.videocam_outlined,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        // Name + location
+                        Positioned(
+                          left: 10,
+                          bottom: 10,
+                          right: 16,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: 0,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                itemAt(index).name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                itemAt(index).location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
+          ),
         ],
-      ),      
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push<Camera>(context,
-            MaterialPageRoute(
-              builder: (context) => const CameraBrowsePage(),
-            ),
+          await Navigator.push<Camera>(
+            context,
+            MaterialPageRoute(builder: (context) => const CameraBrowsePage()),
           ).then((setupCamera) {
             if (setupCamera != null) {
               cameraBox.add(setupCamera);
@@ -274,10 +290,6 @@ class _MyHomePageState extends State<MyHomePage> {
             label: TText.homeTabName,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.camera_alt),
-            label: TText.cameraTabName,
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: TText.settingsTabName,
           ),
@@ -286,29 +298,35 @@ class _MyHomePageState extends State<MyHomePage> {
           // Handle bottom navigation tap
           if (index == 2) {
             // Navigate to camera page
-            Navigator.push(context, 
-              MaterialPageRoute(
-                builder: (context) => const SettingsPage(),
-              )
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsPage()),
             );
           } else if (index == 1) {
             // Navigate to camera page
             // Selected camera is the first one in the list, or null if no cameras exist
-            Camera? selectedCamera = cameraBox.isNotEmpty ? cameraBox.getAt(0) : null;
+            Camera? selectedCamera = cameraBox.isNotEmpty
+                ? cameraBox.getAt(0)
+                : null;
             if (selectedCamera != null) {
-              Navigator.push(context, 
+              Navigator.push(
+                context,
                 MaterialPageRoute(
                   builder: (context) => CameraPage(camera: selectedCamera),
-                )
+                ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No cameras available. Please add a camera first.')),
+                const SnackBar(
+                  content: Text(
+                    'No cameras available. Please add a camera first.',
+                  ),
+                ),
               );
             }
           }
         },
-      )
+      ),
     );
   }
 }
