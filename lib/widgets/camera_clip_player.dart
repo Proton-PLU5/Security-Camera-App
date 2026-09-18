@@ -96,11 +96,11 @@ class _CameraClipPlayerState extends State<CameraClipPlayer> {
   }
 
   Future<void> _setupVideoPlayer() async {
-    final clipNameCleaned = widget.clip.fileName
-        .replaceFirst("clip_", "")
-        .replaceFirst(".mp4", "");
-
-    final uri = Uri.parse('${_networkUtils.baseUrl}/clip/$clipNameCleaned');
+    // `id` is the database identifier used by the detections endpoint.  Do
+    // not derive an identifier from `filePath`: older clips can have a
+    // different path/name format, which made the server return a non-video
+    // response that the native player surfaced only as PlatformException.
+    final uri = Uri.parse('${_networkUtils.baseUrl}/clip/${widget.clip.id}');
 
     await _initVideoController(uri, isRetry: false);
 

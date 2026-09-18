@@ -23,9 +23,11 @@ class CameraPage extends StatefulWidget {
 
 class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   Timer? _timer;
+
   ValueNotifier<String> currentTimeNotifier = ValueNotifier<String>(
     DateFormat('EEE, MMM d yyyy HH:mm:ss').format(DateTime.now()),
   );
+
   bool get viewingPreview => _selectedClip == null;
   CameraClip? _selectedClip;
 
@@ -51,19 +53,15 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 400),
       value: 1.0,
     );
-    // Update the current time every second
+    // Update the wall clock while showing the live preview.  Replay time is
+    // driven by VideoPlayerController below; updating it here as well causes
+    // the two sources to overwrite each other at the second boundary.
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
-      setState(() {
-        if (_selectedClip == null) {
-          currentTimeNotifier.value = DateFormat(
-            'EEE, MMM d yyyy HH:mm:ss',
-          ).format(DateTime.now());
-        } else {
-          currentTimeNotifier.value = DateFormat(
-            'EEE, MMM d yyyy HH:mm:ss',
-          ).format(_selectedClip!.startedAt);
-        }
-      });
+      if (!mounted || _selectedClip != null) return;
+
+      currentTimeNotifier.value = DateFormat(
+        'EEE, MMM d yyyy HH:mm:ss',
+      ).format(DateTime.now());
     });
   }
 
@@ -176,15 +174,19 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   }
 
   void updateTimeCallback(double currentSeconds) {
-    setState(() {
-      final displayTime = _selectedClip!.startedAt.add(
-        Duration(milliseconds: (currentSeconds * 1000).round()),
-      );
+    final selectedClip = _selectedClip;
+    if (!mounted || selectedClip == null) return;
 
-      currentTimeNotifier.value = DateFormat(
-        'EEE, MMM d yyyy HH:mm:ss',
-      ).format(displayTime);
-    });
+    final displayTime = selectedClip.startedAt.add(
+      // The label has whole-second precision.  Flooring prevents it from
+      // advancing early at .5s (and then appearing to jump back if the native
+      // player's reported position jitters slightly).
+      Duration(seconds: currentSeconds.floor()),
+    );
+
+    currentTimeNotifier.value = DateFormat(
+      'EEE, MMM d yyyy HH:mm:ss',
+    ).format(displayTime);
   }
 
   void _openPatrolSheet() {
@@ -194,23 +196,22 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       patrolPattern: _patrolPattern,
       patrolPeriodSeconds: _patrolPeriodSeconds,
       patrolWaitTimeSeconds: _patrolWaitTimeSeconds,
-      onConfigChanged: ({
-        required bool isPatrolActive,
-        required String patrolPattern,
-        required int patrolPeriodSeconds,
-        required int patrolWaitTimeSeconds,
-      }) {
-        setState(() {
-          _isPatrolActive = isPatrolActive;
-          _patrolPattern = patrolPattern;
-          _patrolPeriodSeconds = patrolPeriodSeconds;
-          _patrolWaitTimeSeconds = patrolWaitTimeSeconds;
-        });
-      },
+      onConfigChanged:
+          ({
+            required bool isPatrolActive,
+            required String patrolPattern,
+            required int patrolPeriodSeconds,
+            required int patrolWaitTimeSeconds,
+          }) {
+            setState(() {
+              _isPatrolActive = isPatrolActive;
+              _patrolPattern = patrolPattern;
+              _patrolPeriodSeconds = patrolPeriodSeconds;
+              _patrolWaitTimeSeconds = patrolWaitTimeSeconds;
+            });
+          },
     );
   }
-
-
 
   void _toggleClipList() {
     setState(() {
@@ -245,9 +246,9 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       await widget.camera.save();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Snapshot saved to Files.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Snapshot saved to Files.')));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,8 +256,6 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       );
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -456,10 +455,7 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
                 builder: (context, child) {
                   final double clipOpacity =
                       (1.0 - _panelAnimationController.value).clamp(0.0, 1.0);
-                  return Opacity(
-                    opacity: clipOpacity,
-                    child: child,
-                  );
+                  return Opacity(opacity: clipOpacity, child: child);
                 },
                 child: ClipListWidget(
                   camera: widget.camera,

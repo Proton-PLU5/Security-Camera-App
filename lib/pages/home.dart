@@ -306,34 +306,12 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         onTap: (index) {
           // Handle bottom navigation tap
-          if (index == 2) {
-            // Navigate to camera page
+          if (index == 1) {
+            // Navigate to settings page
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SettingsPage()),
             );
-          } else if (index == 1) {
-            // Navigate to camera page
-            // Selected camera is the first one in the list, or null if no cameras exist
-            Camera? selectedCamera = cameraBox.isNotEmpty
-                ? cameraBox.getAt(0)
-                : null;
-            if (selectedCamera != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CameraPage(camera: selectedCamera),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'No cameras available. Please add a camera first.',
-                  ),
-                ),
-              );
-            }
           }
         },
       ),

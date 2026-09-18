@@ -24,23 +24,57 @@ class _CameraBrowsePageState extends State<CameraBrowsePage> {
     _discoveryService = CameraDiscoveryService();
 
     search();
+
+    // Fake camera data for testing
+    DiscoveredCamera fakeCamera1 = DiscoveredCamera(
+      uuid: 'camera1',
+      name: 'Camera 1',
+      ip: '192.168.0.161',
+      port: 8080,
+      version: '1.0',
+    );
+
+    cameras.add(fakeCamera1);
+  }
+
+  @override
+  void dispose() {
+    _discoveryService?.stop();
+    super.dispose();
   }
 
   void search() {
     cameras.clear();
 
     setState(() => isSearching = true);
-    _discoveryService!.start().then((_) {
-      _discoveryService!.discoverCameras().listen(
-        (camera) {
-          setState(() => cameras.add(camera));
-        },
-        onDone: () {
-          _discoveryService!.stop();
-          setState(() => isSearching = false);
-        },
-      );
-    });
+    _discoveryService!
+        .start()
+        .then((_) {
+          _discoveryService!.discoverCameras().listen(
+            (camera) {
+              if (mounted) {
+                setState(() => cameras.add(camera));
+              }
+            },
+            onDone: () {
+              _discoveryService!.stop();
+              if (mounted) {
+                setState(() => isSearching = false);
+              }
+            },
+            onError: (_) {
+              _discoveryService!.stop();
+              if (mounted) {
+                setState(() => isSearching = false);
+              }
+            },
+          );
+        })
+        .catchError((_) {
+          if (mounted) {
+            setState(() => isSearching = false);
+          }
+        });
   }
 
   @override

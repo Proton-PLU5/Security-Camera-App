@@ -1,19 +1,35 @@
 import 'dart:io';
 import 'package:multicast_dns/multicast_dns.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 import '../models/discovered_camera.dart';
 
 class CameraDiscoveryService {
   final MDnsClient _mdnsClient = MDnsClient();
   static const String _serviceType = '_camera._tcp.local';
+  static const MethodChannel _multicastChannel =
+      MethodChannel('camera_application/multicast_lock');
 
   Future<void> start() async {
-    await _mdnsClient.start(
-      interfacesFactory: (type) => NetworkInterface.list(
-        includeLoopback: false,
-        type: InternetAddressType.IPv4,
-      ),
-    );
+    // Android filters Wi-Fi multicast by default. mDNS discovery uses multicast
+    // UDP, so keep the platform multicast lock while this service is active.
+    if (Platform.isAndroid) {
+      await _multicastChannel.invokeMethod<void>('acquire');
+    }
+
+    try {
+      await _mdnsClient.start(
+        interfacesFactory: (type) => NetworkInterface.list(
+          includeLoopback: false,
+          type: InternetAddressType.IPv4,
+        ),
+      );
+    } catch (_) {
+      if (Platform.isAndroid) {
+        await _multicastChannel.invokeMethod<void>('release');
+      }
+      rethrow;
+    }
   }
 
   Stream<DiscoveredCamera> discoverCameras() async* {
@@ -75,5 +91,8 @@ class CameraDiscoveryService {
 
   Future<void> stop() async {
     _mdnsClient.stop();
+    if (Platform.isAndroid) {
+      await _multicastChannel.invokeMethod<void>('release');
+    }
   }
 }
