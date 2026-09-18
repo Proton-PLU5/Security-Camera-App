@@ -36,6 +36,7 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   bool _isFlashlightOn = false;
   bool _isNightVisionOn = false;
   bool _showClipList = false;
+  String? _lastGallerySnapshotUri;
 
   // Patrol configuration & state
   bool _isPatrolActive = false;
@@ -245,14 +246,56 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       widget.camera.imagePath = snapshot.path;
       await widget.camera.save();
 
+      String? galleryUri;
+      try {
+        galleryUri = await SnapshotStorage.saveToGallery(
+          jpegBytes: response.bodyBytes,
+          fileName: snapshot.uri.pathSegments.last,
+        );
+      } catch (_) {
+        // Keep the app-private copy even when gallery access is unavailable.
+      }
+
+      if (mounted) {
+        setState(() => _lastGallerySnapshotUri = galleryUri);
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Snapshot saved to Files.')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            galleryUri == null
+                ? 'Snapshot saved to app storage.'
+                : 'Snapshot saved to Photos.',
+          ),
+          action: galleryUri == null
+              ? null
+              : SnackBarAction(
+                  label: 'Open Photos',
+                  onPressed: _openLastSnapshot,
+                ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not take snapshot: $error')),
+      );
+    }
+  }
+
+  Future<void> _openLastSnapshot() async {
+    final galleryUri = _lastGallerySnapshotUri;
+    if (galleryUri == null) return;
+
+    try {
+      await SnapshotStorage.openInPhotos(galleryUri);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Photos: $error')),
       );
     }
   }
@@ -263,6 +306,12 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       appBar: AppBar(
         title: Text(widget.camera.name),
         actions: [
+          if (_lastGallerySnapshotUri != null)
+            IconButton(
+              tooltip: 'Open last snapshot in Photos',
+              icon: const Icon(Icons.photo_library_outlined),
+              onPressed: _openLastSnapshot,
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.settings),
             onSelected: (String value) {
